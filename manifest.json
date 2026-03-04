@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Zendesk Ticket to Markdown",
+  "description": "Extract Zendesk ticket comments and copy a Markdown transcript to the clipboard.",
+  "version": "0.1.0",
+  "permissions": [
+    "clipboardWrite",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.zendesk.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Copy Zendesk ticket as Markdown",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    },
+    "default_popup": "popup.html"
+  }
+}

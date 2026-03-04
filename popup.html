@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zendesk Ticket Export</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <h1>Zendesk Ticket Export</h1>
+
+      <label class="toggle">
+        <input type="checkbox" id="includePrivateNotes" />
+        <span>Include private notes</span>
+      </label>
+
+      <label class="toggle">
+        <input type="checkbox" id="includeAttachments" />
+        <span>Include attachment links</span>
+      </label>
+
+      <label for="markdownTemplate" class="label">Markdown template</label>
+      <textarea
+        id="markdownTemplate"
+        rows="11"
+        spellcheck="false"
+        aria-label="Markdown template"
+      ></textarea>
+      <p class="tokens">
+        Placeholders: <code>{{ticket_id}}</code> <code>{{subject}}</code>
+        <code>{{url}}</code> <code>{{exported_at}}</code> <code>{{source}}</code>
+        <code>{{entries_count}}</code> <code>{{conversation}}</code>
+      </p>
+
+      <div class="actions">
+        <button id="saveOptions" type="button">Save</button>
+        <button id="resetDefaults" type="button" class="secondary">Reset defaults</button>
+        <button id="copyNow" type="button" class="primary">Copy Current Ticket</button>
+      </div>
+
+      <p id="statusMessage" class="status" aria-live="polite"></p>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
