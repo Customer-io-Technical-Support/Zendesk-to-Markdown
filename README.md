@@ -1,6 +1,6 @@
 <img width="128" height="128" alt="image" src="https://github.com/user-attachments/assets/34ca65b9-e960-4bb1-b4ae-0198fe4837d9" />
 
-# Zendesk Ticket to Markdown
+# Zendesk Ticket to Markdown (Chrome Extension)
 
 Chrome extension to export a Zendesk ticket conversation into clean Markdown and copy it to your clipboard for use in an LLM.
 
