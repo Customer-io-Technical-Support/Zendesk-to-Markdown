@@ -1,4 +1,4 @@
-const DEFAULT_ACTION_TITLE = "Copy Zendesk ticket as Markdown";
+const DEFAULT_ACTION_TITLE = "Export Zendesk ticket as Markdown";
 const DEFAULT_MARKDOWN_TEMPLATE = [
   "# Zendesk Ticket Export",
   "",
@@ -16,8 +16,11 @@ const DEFAULT_MARKDOWN_TEMPLATE = [
 const DEFAULT_OPTIONS = {
   includePrivateNotes: true,
   includeAttachments: true,
+  promptForDownloadLocation: true,
   markdownTemplate: DEFAULT_MARKDOWN_TEMPLATE
 };
+const MESSAGE_TYPE_COPY = "runExtractionOnActiveTab";
+const MESSAGE_TYPE_DOWNLOAD = "downloadMarkdownForActiveTab";
 
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) {
@@ -28,7 +31,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== "runExtractionOnActiveTab") {
+  if (![MESSAGE_TYPE_COPY, MESSAGE_TYPE_DOWNLOAD].includes(message?.type)) {
     return undefined;
   }
 
@@ -40,7 +43,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return;
       }
 
-      const result = await runExtraction(tab.id, tab.url || "");
+      const mode = message.type === MESSAGE_TYPE_DOWNLOAD ? "download" : "copy";
+      const result = await runExtraction(tab.id, tab.url || "", mode);
       sendResponse(result);
     } catch (error) {
       sendResponse({ ok: false, error: String(error?.message || error) });
@@ -50,7 +54,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
-async function runExtraction(tabId, tabUrl) {
+async function runExtraction(tabId, tabUrl, mode = "copy") {
   if (!isZendeskTicketUrl(tabUrl)) {
     const message = "Open a Zendesk ticket page first (example: /agent/tickets/12345).";
     await flashActionState(tabId, {
@@ -63,23 +67,52 @@ async function runExtraction(tabId, tabUrl) {
 
   try {
     const options = await getOptions();
+    const copyToClipboard = mode !== "download";
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: extractAndCopyTicket,
-      args: [options]
+      func: extractTicket,
+      args: [options, { copyToClipboard }]
     });
 
     if (!result?.ok) {
       throw new Error(result?.error || "Unknown extraction error.");
     }
 
+    let filename = "";
+    if (!copyToClipboard) {
+      if (typeof result.markdown !== "string" || !result.markdown.trim()) {
+        throw new Error("Extraction completed, but no Markdown output was returned.");
+      }
+      filename = buildDownloadFilename(result);
+      await startMarkdownDownload(
+        result.markdown,
+        filename,
+        options.promptForDownloadLocation !== false
+      );
+    }
+
+    const actionTitle = copyToClipboard
+      ? `Copied ${result.count} entries to clipboard.`
+      : `Downloaded ${result.count} entries as ${filename}.`;
     await flashActionState(tabId, {
-      badgeText: "OK",
-      badgeColor: "#16723b",
-      title: `Copied ${result.count} entries to clipboard.`
+      badgeText: copyToClipboard ? "OK" : "DL",
+      badgeColor: copyToClipboard ? "#16723b" : "#1d4ed8",
+      title: actionTitle
     });
 
-    return result;
+    const response = {
+      ok: true,
+      count: result.count,
+      source: result.source,
+      ticketId: result.ticketId,
+      subject: result.subject || "",
+      exportedAt: result.exportedAt,
+      url: result.url
+    };
+    if (filename) {
+      response.filename = filename;
+    }
+    return response;
   } catch (error) {
     console.error("Zendesk extraction failed:", error);
     await flashActionState(tabId, {
@@ -109,6 +142,10 @@ function normalizeOptions(rawOptions) {
     rawOptions?.includeAttachments !== undefined
       ? Boolean(rawOptions.includeAttachments)
       : DEFAULT_OPTIONS.includeAttachments;
+  const promptForDownloadLocation =
+    rawOptions?.promptForDownloadLocation !== undefined
+      ? Boolean(rawOptions.promptForDownloadLocation)
+      : DEFAULT_OPTIONS.promptForDownloadLocation;
   const markdownTemplate =
     typeof rawOptions?.markdownTemplate === "string" && rawOptions.markdownTemplate.trim()
       ? rawOptions.markdownTemplate
@@ -117,6 +154,7 @@ function normalizeOptions(rawOptions) {
   return {
     includePrivateNotes,
     includeAttachments,
+    promptForDownloadLocation,
     markdownTemplate
   };
 }
@@ -132,7 +170,57 @@ async function flashActionState(tabId, state) {
   }, 4000);
 }
 
-function extractAndCopyTicket(rawOptions) {
+function buildDownloadFilename(result) {
+  const ticketId = sanitizeFilenamePart(result?.ticketId || "") || "unknown-ticket";
+  const subject = sanitizeFilenamePart(result?.subject || "");
+  const dateStamp = getDateStamp(result?.exportedAt);
+  const parts = [`zendesk-ticket-${ticketId}`];
+  if (subject) {
+    parts.push(subject);
+  }
+  if (dateStamp) {
+    parts.push(dateStamp);
+  }
+  return `${parts.join("-")}.md`;
+}
+
+function sanitizeFilenamePart(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[/\\?%*:|"<>]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^\.+|\.+$/g, "")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+function getDateStamp(rawDate) {
+  const date = new Date(rawDate || Date.now());
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+}
+
+async function startMarkdownDownload(markdown, filename, saveAs = true) {
+  const text = String(markdown || "");
+  const dataUrl = `data:text/markdown;charset=utf-8,${encodeURIComponent(text)}`;
+  const downloadId = await chrome.downloads.download({
+    url: dataUrl,
+    filename,
+    conflictAction: "uniquify",
+    saveAs
+  });
+  if (typeof downloadId !== "number") {
+    throw new Error("Browser did not start the download.");
+  }
+}
+
+function extractTicket(rawOptions, rawRunOptions) {
   return (async () => {
     const defaultTemplate = [
       "# Zendesk Ticket Export",
@@ -149,6 +237,7 @@ function extractAndCopyTicket(rawOptions) {
       "{{conversation}}"
     ].join("\n");
     const options = sanitizeOptions(rawOptions, defaultTemplate);
+    const runOptions = sanitizeRunOptions(rawRunOptions);
 
     const ticketId = getTicketIdFromPath();
     if (!ticketId) {
@@ -180,17 +269,27 @@ function extractAndCopyTicket(rawOptions) {
     }
 
     const markdown = renderMarkdown(exportData, options);
-    const copied = await copyText(markdown);
-    if (!copied) {
-      showToast("Extraction worked, but clipboard write failed.", true);
-      return { ok: false, error: "Clipboard write failed." };
+    if (runOptions.copyToClipboard) {
+      const copied = await copyText(markdown);
+      if (!copied) {
+        showToast("Extraction worked, but clipboard write failed.", true);
+        return { ok: false, error: "Clipboard write failed." };
+      }
+
+      showToast(`Copied ${exportData.entries.length} entries as Markdown.`);
+    } else {
+      showToast(`Prepared ${exportData.entries.length} entries for download.`);
     }
 
-    showToast(`Copied ${exportData.entries.length} entries as Markdown.`);
     return {
       ok: true,
       count: exportData.entries.length,
-      source: exportData.source
+      source: exportData.source,
+      markdown,
+      ticketId: exportData.ticketId,
+      subject: exportData.subject || "",
+      exportedAt: exportData.exportedAt,
+      url: exportData.url
     };
   })();
 
@@ -209,6 +308,12 @@ function extractAndCopyTicket(rawOptions) {
         typeof input?.markdownTemplate === "string" && input.markdownTemplate.trim()
           ? input.markdownTemplate
           : templateFallback
+    };
+  }
+
+  function sanitizeRunOptions(input) {
+    return {
+      copyToClipboard: input?.copyToClipboard !== false
     };
   }
 

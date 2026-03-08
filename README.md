@@ -2,7 +2,7 @@
 
 # Zendesk Ticket to Markdown (Chrome Extension)
 
-Chrome extension to export a Zendesk ticket conversation into clean Markdown and copy it to your clipboard for use in an LLM.
+Chrome extension to export a Zendesk ticket conversation into clean Markdown and copy it to your clipboard or download it as a `.md` file for use in an LLM.
 
 ## What It Does
 
@@ -11,6 +11,7 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 - Strips inline formatting to plain text
 - Optionally includes attachment links
 - Copies generated Markdown to clipboard
+- Downloads generated Markdown as a `.md` file
 - Supports a customizable Markdown template
 
 ## Scope and Restrictions
@@ -44,9 +45,10 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 3. Configure options in the popup:
    - Include private notes
    - Include attachment links
+   - Show save dialog when downloading
    - Markdown template
-4. Click **Copy Current Ticket**.
-5. Paste into your LLM.
+4. Click **Copy Current Ticket** to copy to clipboard or **Download Markdown** to save a file.
+5. Paste/upload into your LLM.
 
 ## Markdown Template Placeholders
 
@@ -74,17 +76,21 @@ If `{{conversation}}` is omitted, the conversation block is appended automatical
 - `scripting` - Inject extraction function into the active Zendesk tab
 - `storage` - Save popup settings (`chrome.storage.sync`)
 - `clipboardWrite` - Copy generated Markdown to clipboard
+- `downloads` - Save generated Markdown as a local `.md` file
 - Host permissions: `https://*.zendesk.com/*`
 
 ## Troubleshooting
 
-- **Copy button is disabled**:
+- **Copy/Download buttons are disabled**:
   - Open a Zendesk ticket page on `*.zendesk.com`.
 - **No content exported**:
   - Ensure the ticket conversation is visible and loaded.
   - Retry after page refresh.
 - **Clipboard failure**:
   - Check browser/OS clipboard permissions and retry.
+- **Download failure**:
+  - Reload the extension after permission changes.
+  - Confirm Chrome allows downloads for extensions.
 
 ## Development Notes
 

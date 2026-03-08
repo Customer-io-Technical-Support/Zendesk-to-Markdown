@@ -16,15 +16,18 @@ const DEFAULT_MARKDOWN_TEMPLATE = [
 const DEFAULT_OPTIONS = {
   includePrivateNotes: true,
   includeAttachments: true,
+  promptForDownloadLocation: true,
   markdownTemplate: DEFAULT_MARKDOWN_TEMPLATE
 };
 
 const includePrivateNotesEl = document.getElementById("includePrivateNotes");
 const includeAttachmentsEl = document.getElementById("includeAttachments");
+const promptForDownloadLocationEl = document.getElementById("promptForDownloadLocation");
 const markdownTemplateEl = document.getElementById("markdownTemplate");
 const saveOptionsEl = document.getElementById("saveOptions");
 const resetDefaultsEl = document.getElementById("resetDefaults");
 const copyNowEl = document.getElementById("copyNow");
+const downloadNowEl = document.getElementById("downloadNow");
 const statusMessageEl = document.getElementById("statusMessage");
 const ZENDESK_TICKET_URL_PATTERN = /^https?:\/\/[^/]*\.zendesk\.com\/agent\/tickets\/\d+/i;
 
@@ -69,6 +72,25 @@ copyNowEl.addEventListener("click", async () => {
   }
 });
 
+downloadNowEl.addEventListener("click", async () => {
+  setBusy(true);
+  try {
+    await saveOptions();
+    const result = await chrome.runtime.sendMessage({ type: "downloadMarkdownForActiveTab" });
+
+    if (result?.ok) {
+      const filename = result?.filename || "zendesk-ticket-export.md";
+      showStatus(`Downloaded ${result.count} entries as ${filename}.`);
+    } else {
+      showStatus(result?.error || "Download failed.", true);
+    }
+  } catch (error) {
+    showStatus(`Download failed: ${String(error?.message || error)}`, true);
+  } finally {
+    setBusy(false);
+  }
+});
+
 async function init() {
   const saved = await chrome.storage.sync.get(DEFAULT_OPTIONS);
   applyOptions(normalizeOptions(saved));
@@ -77,6 +99,7 @@ async function init() {
   const isSupportedTab = Boolean(tab?.url && ZENDESK_TICKET_URL_PATTERN.test(tab.url));
   if (!isSupportedTab) {
     copyNowEl.disabled = true;
+    downloadNowEl.disabled = true;
     showStatus("Open a Zendesk ticket page under *.zendesk.com to export.", true);
   }
 }
@@ -84,6 +107,7 @@ async function init() {
 function applyOptions(options) {
   includePrivateNotesEl.checked = options.includePrivateNotes;
   includeAttachmentsEl.checked = options.includeAttachments;
+  promptForDownloadLocationEl.checked = options.promptForDownloadLocation;
   markdownTemplateEl.value = options.markdownTemplate;
 }
 
@@ -91,6 +115,7 @@ async function saveOptions() {
   const options = normalizeOptions({
     includePrivateNotes: includePrivateNotesEl.checked,
     includeAttachments: includeAttachmentsEl.checked,
+    promptForDownloadLocation: promptForDownloadLocationEl.checked,
     markdownTemplate: markdownTemplateEl.value
   });
 
@@ -107,6 +132,10 @@ function normalizeOptions(rawOptions) {
       rawOptions?.includeAttachments !== undefined
         ? Boolean(rawOptions.includeAttachments)
         : DEFAULT_OPTIONS.includeAttachments,
+    promptForDownloadLocation:
+      rawOptions?.promptForDownloadLocation !== undefined
+        ? Boolean(rawOptions.promptForDownloadLocation)
+        : DEFAULT_OPTIONS.promptForDownloadLocation,
     markdownTemplate:
       typeof rawOptions?.markdownTemplate === "string" && rawOptions.markdownTemplate.trim()
         ? rawOptions.markdownTemplate
@@ -116,6 +145,7 @@ function normalizeOptions(rawOptions) {
 
 function setBusy(isBusy) {
   copyNowEl.disabled = isBusy;
+  downloadNowEl.disabled = isBusy;
   saveOptionsEl.disabled = isBusy;
   resetDefaultsEl.disabled = isBusy;
 }
