@@ -16,6 +16,7 @@ const DEFAULT_MARKDOWN_TEMPLATE = [
 const DEFAULT_OPTIONS = {
   includePrivateNotes: true,
   includeAttachments: true,
+  includeInlineImages: false,
   promptForDownloadLocation: true,
   markdownTemplate: DEFAULT_MARKDOWN_TEMPLATE
 };
@@ -142,6 +143,10 @@ function normalizeOptions(rawOptions) {
     rawOptions?.includeAttachments !== undefined
       ? Boolean(rawOptions.includeAttachments)
       : DEFAULT_OPTIONS.includeAttachments;
+  const includeInlineImages =
+    rawOptions?.includeInlineImages !== undefined
+      ? Boolean(rawOptions.includeInlineImages)
+      : DEFAULT_OPTIONS.includeInlineImages;
   const promptForDownloadLocation =
     rawOptions?.promptForDownloadLocation !== undefined
       ? Boolean(rawOptions.promptForDownloadLocation)
@@ -154,6 +159,7 @@ function normalizeOptions(rawOptions) {
   return {
     includePrivateNotes,
     includeAttachments,
+    includeInlineImages,
     promptForDownloadLocation,
     markdownTemplate
   };
@@ -304,6 +310,8 @@ function extractTicket(rawOptions, rawRunOptions) {
         input?.includePrivateNotes !== undefined ? Boolean(input.includePrivateNotes) : true,
       includeAttachments:
         input?.includeAttachments !== undefined ? Boolean(input.includeAttachments) : true,
+      includeInlineImages:
+        input?.includeInlineImages !== undefined ? Boolean(input.includeInlineImages) : false,
       markdownTemplate:
         typeof input?.markdownTemplate === "string" && input.markdownTemplate.trim()
           ? input.markdownTemplate
@@ -389,20 +397,30 @@ function extractTicket(rawOptions, rawRunOptions) {
   }
 
   function normalizeComment(comment, userNames, exportOptions) {
-    const attachmentLines = (comment.attachments || [])
+    const attachments = (comment.attachments || [])
       .map((attachment) => {
-        const url = attachment.content_url || attachment.mapped_content_url || "";
+        const url = normalizeHttpUrl(attachment.content_url || attachment.mapped_content_url || "");
         if (!url) {
           return null;
         }
         const name = attachment.file_name || "Attachment";
-        return `- [${sanitizeInline(name)}](${url})`;
+        return {
+          url,
+          line: `- [${sanitizeInline(name)}](${url})`
+        };
       })
       .filter(Boolean);
+    const attachmentLines = attachments.map((attachment) => attachment.line);
+    const attachmentUrls = new Set(attachments.map((attachment) => attachment.url));
 
     let body = normalizeText(comment.plain_body || comment.body || stripHtml(comment.html_body || ""));
+    if (exportOptions.includeInlineImages) {
+      const inlineImageExclusions = exportOptions.includeAttachments ? attachmentUrls : new Set();
+      const inlineImages = extractInlineImagesFromHtml(comment.html_body || "", inlineImageExclusions);
+      body = appendSection(body, "Inline images:", renderInlineImageLines(inlineImages));
+    }
     if (exportOptions.includeAttachments && attachmentLines.length > 0) {
-      body = `${body}\n\nAttachments:\n${attachmentLines.join("\n")}`.trim();
+      body = appendSection(body, "Attachments:", attachmentLines);
     }
 
     return {
@@ -440,7 +458,12 @@ function extractTicket(rawOptions, rawRunOptions) {
 
     const bodyNodes = unique(
       selectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)))
-    ).filter((node) => normalizeText(node.innerText || node.textContent || "").length > 0);
+    ).filter((node) => {
+      if (normalizeText(node.innerText || node.textContent || "").length > 0) {
+        return true;
+      }
+      return exportOptions.includeInlineImages && Boolean(node.querySelector("img"));
+    });
 
     const entries = [];
     let index = 1;
@@ -450,7 +473,11 @@ function extractTicket(rawOptions, rawRunOptions) {
         bodyNode.closest(
           "article, li, [data-comment-id], [data-test-id*='comment'], [class*='comment'], [class*='note']"
         ) || bodyNode;
-      const body = normalizeText(bodyNode.innerText || bodyNode.textContent || "");
+      let body = normalizeText(bodyNode.innerText || bodyNode.textContent || "");
+      if (exportOptions.includeInlineImages) {
+        const inlineImages = extractInlineImagesFromElement(bodyNode);
+        body = appendSection(body, "Inline images:", renderInlineImageLines(inlineImages));
+      }
       if (!body) {
         continue;
       }
@@ -697,6 +724,101 @@ function extractTicket(rawOptions, rawRunOptions) {
   function stripHtml(html) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     return doc.body?.textContent || "";
+  }
+
+  function extractInlineImagesFromHtml(html, excludedUrls = new Set()) {
+    if (!html || typeof html !== "string") {
+      return [];
+    }
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return extractInlineImagesFromElement(doc.body, excludedUrls);
+  }
+
+  function extractInlineImagesFromElement(root, excludedUrls = new Set()) {
+    if (!root || typeof root.querySelectorAll !== "function") {
+      return [];
+    }
+
+    const images = [];
+    for (const imageNode of root.querySelectorAll("img")) {
+      const url = resolveInlineImageUrl(imageNode);
+      if (!url || excludedUrls.has(url)) {
+        continue;
+      }
+      images.push({
+        url,
+        alt: sanitizeInline(imageNode.getAttribute("alt") || "")
+      });
+    }
+
+    const deduped = [];
+    const seenUrls = new Set();
+    for (const image of images) {
+      if (seenUrls.has(image.url)) {
+        continue;
+      }
+      seenUrls.add(image.url);
+      deduped.push(image);
+    }
+
+    return deduped;
+  }
+
+  function resolveInlineImageUrl(imageNode) {
+    const candidates = [
+      imageNode.getAttribute("src"),
+      imageNode.getAttribute("data-src"),
+      imageNode.getAttribute("data-original-src"),
+      imageNode.getAttribute("data-mce-src"),
+      imageNode.closest("a[href]")?.getAttribute("href")
+    ];
+
+    for (const candidate of candidates) {
+      const url = normalizeHttpUrl(candidate);
+      if (url) {
+        return url;
+      }
+    }
+
+    return "";
+  }
+
+  function normalizeHttpUrl(rawUrl) {
+    const candidate = String(rawUrl || "").trim();
+    if (!candidate) {
+      return "";
+    }
+
+    try {
+      const parsed = new URL(candidate, window.location.href);
+      if (!/^https?:$/i.test(parsed.protocol)) {
+        return "";
+      }
+      return parsed.href;
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  function renderInlineImageLines(images) {
+    return images.map((image, index) => {
+      const fallbackAlt = `Inline image ${index + 1}`;
+      return `- ![${escapeMarkdownAlt(image.alt || fallbackAlt)}](${image.url})`;
+    });
+  }
+
+  function escapeMarkdownAlt(value) {
+    return sanitizeInline(value).replace(/[[\]\\]/g, "\\$&");
+  }
+
+  function appendSection(body, heading, lines) {
+    if (!Array.isArray(lines) || lines.length === 0) {
+      return normalizeText(body);
+    }
+
+    const normalizedBody = normalizeText(body);
+    const section = `${heading}\n${lines.join("\n")}`;
+    return normalizedBody ? `${normalizedBody}\n\n${section}` : section;
   }
 
   function formatTimestamp(value) {
