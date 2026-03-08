@@ -10,6 +10,7 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 - Includes both public replies and private notes (configurable)
 - Strips inline formatting to plain text
 - Optionally includes attachment links
+- Optionally includes hosted inline image URLs from replies/comments
 - Copies generated Markdown to clipboard
 - Downloads generated Markdown as a `.md` file
 - Supports a customizable Markdown template
@@ -45,6 +46,7 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 3. Configure options in the popup:
    - Include private notes
    - Include attachment links
+   - Include inline image URLs
    - Show save dialog when downloading
    - Markdown template
 4. Click **Copy Current Ticket** to copy to clipboard or **Download Markdown** to save a file.

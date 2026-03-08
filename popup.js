@@ -16,12 +16,14 @@ const DEFAULT_MARKDOWN_TEMPLATE = [
 const DEFAULT_OPTIONS = {
   includePrivateNotes: true,
   includeAttachments: true,
+  includeInlineImages: false,
   promptForDownloadLocation: true,
   markdownTemplate: DEFAULT_MARKDOWN_TEMPLATE
 };
 
 const includePrivateNotesEl = document.getElementById("includePrivateNotes");
 const includeAttachmentsEl = document.getElementById("includeAttachments");
+const includeInlineImagesEl = document.getElementById("includeInlineImages");
 const promptForDownloadLocationEl = document.getElementById("promptForDownloadLocation");
 const markdownTemplateEl = document.getElementById("markdownTemplate");
 const saveOptionsEl = document.getElementById("saveOptions");
@@ -107,6 +109,7 @@ async function init() {
 function applyOptions(options) {
   includePrivateNotesEl.checked = options.includePrivateNotes;
   includeAttachmentsEl.checked = options.includeAttachments;
+  includeInlineImagesEl.checked = options.includeInlineImages;
   promptForDownloadLocationEl.checked = options.promptForDownloadLocation;
   markdownTemplateEl.value = options.markdownTemplate;
 }
@@ -115,6 +118,7 @@ async function saveOptions() {
   const options = normalizeOptions({
     includePrivateNotes: includePrivateNotesEl.checked,
     includeAttachments: includeAttachmentsEl.checked,
+    includeInlineImages: includeInlineImagesEl.checked,
     promptForDownloadLocation: promptForDownloadLocationEl.checked,
     markdownTemplate: markdownTemplateEl.value
   });
@@ -132,6 +136,10 @@ function normalizeOptions(rawOptions) {
       rawOptions?.includeAttachments !== undefined
         ? Boolean(rawOptions.includeAttachments)
         : DEFAULT_OPTIONS.includeAttachments,
+    includeInlineImages:
+      rawOptions?.includeInlineImages !== undefined
+        ? Boolean(rawOptions.includeInlineImages)
+        : DEFAULT_OPTIONS.includeInlineImages,
     promptForDownloadLocation:
       rawOptions?.promptForDownloadLocation !== undefined
         ? Boolean(rawOptions.promptForDownloadLocation)
