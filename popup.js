@@ -30,6 +30,8 @@ const saveOptionsEl = document.getElementById("saveOptions");
 const resetDefaultsEl = document.getElementById("resetDefaults");
 const copyNowEl = document.getElementById("copyNow");
 const downloadNowEl = document.getElementById("downloadNow");
+const catchMeUpEl = document.getElementById("catchMeUp");
+const checkCloseEl = document.getElementById("checkClose");
 const statusMessageEl = document.getElementById("statusMessage");
 const ZENDESK_TICKET_URL_PATTERN = /^https?:\/\/[^/]*\.zendesk\.com\/agent\/tickets\/\d+/i;
 
@@ -93,6 +95,48 @@ downloadNowEl.addEventListener("click", async () => {
   }
 });
 
+catchMeUpEl.addEventListener("click", async () => {
+  setBusy(true);
+  try {
+    await saveOptions();
+    const result = await chrome.runtime.sendMessage({
+      type: "runExtractionOnActiveTab",
+      prompt: "Can you catch me up on this ticket?"
+    });
+
+    if (result?.ok) {
+      showStatus(`Copied ${result.count} entries with prompt to clipboard.`);
+    } else {
+      showStatus(result?.error || "Extraction failed.", true);
+    }
+  } catch (error) {
+    showStatus(`Extraction failed: ${String(error?.message || error)}`, true);
+  } finally {
+    setBusy(false);
+  }
+});
+
+checkCloseEl.addEventListener("click", async () => {
+  setBusy(true);
+  try {
+    await saveOptions();
+    const result = await chrome.runtime.sendMessage({
+      type: "runExtractionOnActiveTab",
+      prompt: "Can you double-check that this ticket can be closed? And if so, could you write me a draft to close it?"
+    });
+
+    if (result?.ok) {
+      showStatus(`Copied ${result.count} entries with prompt to clipboard.`);
+    } else {
+      showStatus(result?.error || "Extraction failed.", true);
+    }
+  } catch (error) {
+    showStatus(`Extraction failed: ${String(error?.message || error)}`, true);
+  } finally {
+    setBusy(false);
+  }
+});
+
 async function init() {
   const saved = await chrome.storage.sync.get(DEFAULT_OPTIONS);
   applyOptions(normalizeOptions(saved));
@@ -102,6 +146,8 @@ async function init() {
   if (!isSupportedTab) {
     copyNowEl.disabled = true;
     downloadNowEl.disabled = true;
+    catchMeUpEl.disabled = true;
+    checkCloseEl.disabled = true;
     showStatus("Open a Zendesk ticket page under *.zendesk.com to export.", true);
   }
 }
@@ -154,6 +200,8 @@ function normalizeOptions(rawOptions) {
 function setBusy(isBusy) {
   copyNowEl.disabled = isBusy;
   downloadNowEl.disabled = isBusy;
+  catchMeUpEl.disabled = isBusy;
+  checkCloseEl.disabled = isBusy;
   saveOptionsEl.disabled = isBusy;
   resetDefaultsEl.disabled = isBusy;
 }

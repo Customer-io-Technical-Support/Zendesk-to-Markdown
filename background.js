@@ -45,7 +45,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
 
       const mode = message.type === MESSAGE_TYPE_DOWNLOAD ? "download" : "copy";
-      const result = await runExtraction(tab.id, tab.url || "", mode);
+      const prompt = typeof message.prompt === "string" ? message.prompt : "";
+      const result = await runExtraction(tab.id, tab.url || "", mode, prompt);
       sendResponse(result);
     } catch (error) {
       sendResponse({ ok: false, error: String(error?.message || error) });
@@ -55,7 +56,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
-async function runExtraction(tabId, tabUrl, mode = "copy") {
+async function runExtraction(tabId, tabUrl, mode = "copy", prompt = "") {
   if (!isZendeskTicketUrl(tabUrl)) {
     const message = "Open a Zendesk ticket page first (example: /agent/tickets/12345).";
     await flashActionState(tabId, {
@@ -72,7 +73,7 @@ async function runExtraction(tabId, tabUrl, mode = "copy") {
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
       func: extractTicket,
-      args: [options, { copyToClipboard }]
+      args: [options, { copyToClipboard, prompt }]
     });
 
     if (!result?.ok) {
@@ -276,7 +277,10 @@ function extractTicket(rawOptions, rawRunOptions) {
 
     const markdown = renderMarkdown(exportData, options);
     if (runOptions.copyToClipboard) {
-      const copied = await copyText(markdown);
+      const clipboardText = runOptions.prompt
+        ? `${runOptions.prompt}\n\n${markdown}`
+        : markdown;
+      const copied = await copyText(clipboardText);
       if (!copied) {
         showToast("Extraction worked, but clipboard write failed.", true);
         return { ok: false, error: "Clipboard write failed." };
@@ -321,7 +325,8 @@ function extractTicket(rawOptions, rawRunOptions) {
 
   function sanitizeRunOptions(input) {
     return {
-      copyToClipboard: input?.copyToClipboard !== false
+      copyToClipboard: input?.copyToClipboard !== false,
+      prompt: typeof input?.prompt === "string" ? input.prompt.trim() : ""
     };
   }
 
