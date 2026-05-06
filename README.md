@@ -52,6 +52,16 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 4. Click **Copy Current Ticket** to copy to clipboard or **Download Markdown** to save a file.
 5. Paste/upload into your LLM.
 
+### Keyboard Shortcut
+
+You can copy the current ticket without opening the popup by binding a Chrome shortcut:
+
+1. Visit `chrome://extensions/shortcuts`.
+2. Find **Zendesk Ticket to Markdown** → **Copy current Zendesk ticket as Markdown**.
+3. Click the input and press your desired combo (e.g. `Ctrl+Shift+Y`).
+
+When triggered on a Zendesk ticket page, the extension copies the Markdown to your clipboard and shows an in-page toast confirming success.
+
 ## Markdown Template Placeholders
 
 Use these tokens in the popup template editor:
@@ -98,4 +108,4 @@ If `{{conversation}}` is omitted, the conversation block is appended automatical
 
 - Manifest version: MV3
 - Background runtime: service worker (`background.js`)
-- No keyboard shortcut is configured.
+- Declares a `copy-current-ticket` command (no default key) — bind via `chrome://extensions/shortcuts`.

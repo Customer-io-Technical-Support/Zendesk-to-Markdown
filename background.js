@@ -31,6 +31,19 @@ chrome.action.onClicked.addListener(async (tab) => {
   await runExtraction(tab.id, tab.url || "");
 });
 
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "copy-current-ticket") {
+    return;
+  }
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) {
+    return;
+  }
+
+  await runExtraction(tab.id, tab.url || "", "copy");
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (![MESSAGE_TYPE_COPY, MESSAGE_TYPE_DOWNLOAD].includes(message?.type)) {
     return undefined;

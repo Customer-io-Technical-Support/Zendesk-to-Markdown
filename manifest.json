@@ -29,5 +29,10 @@
       "48": "icons/icon-48.png"
     },
     "default_popup": "popup.html"
+  },
+  "commands": {
+    "copy-current-ticket": {
+      "description": "Copy current Zendesk ticket as Markdown"
+    }
   }
 }
