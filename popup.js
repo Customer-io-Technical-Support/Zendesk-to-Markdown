@@ -18,6 +18,7 @@ const DEFAULT_OPTIONS = {
   includeAttachments: true,
   includeInlineImages: false,
   promptForDownloadLocation: true,
+  autoConvertMarkdownPaste: true,
   markdownTemplate: DEFAULT_MARKDOWN_TEMPLATE
 };
 
@@ -25,6 +26,7 @@ const includePrivateNotesEl = document.getElementById("includePrivateNotes");
 const includeAttachmentsEl = document.getElementById("includeAttachments");
 const includeInlineImagesEl = document.getElementById("includeInlineImages");
 const promptForDownloadLocationEl = document.getElementById("promptForDownloadLocation");
+const autoConvertMarkdownPasteEl = document.getElementById("autoConvertMarkdownPaste");
 const markdownTemplateEl = document.getElementById("markdownTemplate");
 const saveOptionsEl = document.getElementById("saveOptions");
 const resetDefaultsEl = document.getElementById("resetDefaults");
@@ -157,6 +159,7 @@ function applyOptions(options) {
   includeAttachmentsEl.checked = options.includeAttachments;
   includeInlineImagesEl.checked = options.includeInlineImages;
   promptForDownloadLocationEl.checked = options.promptForDownloadLocation;
+  autoConvertMarkdownPasteEl.checked = options.autoConvertMarkdownPaste;
   markdownTemplateEl.value = options.markdownTemplate;
 }
 
@@ -166,6 +169,7 @@ async function saveOptions() {
     includeAttachments: includeAttachmentsEl.checked,
     includeInlineImages: includeInlineImagesEl.checked,
     promptForDownloadLocation: promptForDownloadLocationEl.checked,
+    autoConvertMarkdownPaste: autoConvertMarkdownPasteEl.checked,
     markdownTemplate: markdownTemplateEl.value
   });
 
@@ -190,6 +194,10 @@ function normalizeOptions(rawOptions) {
       rawOptions?.promptForDownloadLocation !== undefined
         ? Boolean(rawOptions.promptForDownloadLocation)
         : DEFAULT_OPTIONS.promptForDownloadLocation,
+    autoConvertMarkdownPaste:
+      rawOptions?.autoConvertMarkdownPaste !== undefined
+        ? Boolean(rawOptions.autoConvertMarkdownPaste)
+        : DEFAULT_OPTIONS.autoConvertMarkdownPaste,
     markdownTemplate:
       typeof rawOptions?.markdownTemplate === "string" && rawOptions.markdownTemplate.trim()
         ? rawOptions.markdownTemplate
