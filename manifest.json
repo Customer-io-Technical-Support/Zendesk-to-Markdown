@@ -21,6 +21,14 @@
       "js": ["content.js"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "https://*.zendesk.com/agent/*",
+        "https://*.zendesk.com/*"
+      ],
+      "js": ["dark-mode-helper.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {

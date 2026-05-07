@@ -19,6 +19,7 @@ const DEFAULT_OPTIONS = {
   includeInlineImages: false,
   promptForDownloadLocation: true,
   autoConvertMarkdownPaste: true,
+  darkModeHelperEnabled: true,
   markdownTemplate: DEFAULT_MARKDOWN_TEMPLATE
 };
 const MESSAGE_TYPE_COPY = "runExtractionOnActiveTab";
@@ -170,6 +171,10 @@ function normalizeOptions(rawOptions) {
     rawOptions?.autoConvertMarkdownPaste !== undefined
       ? Boolean(rawOptions.autoConvertMarkdownPaste)
       : DEFAULT_OPTIONS.autoConvertMarkdownPaste;
+  const darkModeHelperEnabled =
+    rawOptions?.darkModeHelperEnabled !== undefined
+      ? Boolean(rawOptions.darkModeHelperEnabled)
+      : DEFAULT_OPTIONS.darkModeHelperEnabled;
   const markdownTemplate =
     typeof rawOptions?.markdownTemplate === "string" && rawOptions.markdownTemplate.trim()
       ? rawOptions.markdownTemplate
@@ -181,6 +186,7 @@ function normalizeOptions(rawOptions) {
     includeInlineImages,
     promptForDownloadLocation,
     autoConvertMarkdownPaste,
+    darkModeHelperEnabled,
     markdownTemplate
   };
 }
