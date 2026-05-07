@@ -15,6 +15,7 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 - Downloads generated Markdown as a `.md` file
 - Supports a customizable Markdown template
 - Auto-converts pasted markdown (e.g. from Claude) to rich text in the Zendesk reply editor so headings, lists, paragraphs, and code blocks are preserved
+- Strips inline color/background/font styling from incoming email comments so they're readable in dark mode (toggleable)
 
 ## Scope and Restrictions
 
@@ -27,6 +28,7 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 - `manifest.json` - Extension config (MV3), permissions, popup, icons
 - `background.js` - Extraction orchestration and Zendesk gating
 - `content.js` - Paste handler for the Zendesk reply editor: detects markdown on paste and inserts converted HTML so formatting survives
+- `dark-mode-helper.js` - Strips inline `style`/`color`/`bgcolor`/`<font>` from incoming email comments so they render legibly in dark mode
 - `popup.html` - Popup UI
 - `popup.css` - Popup styling
 - `popup.js` - Settings persistence and export trigger
@@ -76,6 +78,12 @@ When you paste markdown (e.g. an LLM reply) into a Zendesk reply or internal not
 - Plain text without markdown syntax pastes as usual
 
 Toggle this behavior in the popup with **"Auto-convert markdown to rich text when pasting into Zendesk"** (on by default). A small toast appears at the bottom-right of the page when a paste is converted.
+
+### Dark Mode Helper
+
+Incoming emails often arrive with hard-coded `color`, `background`, `<font>`, and `bgcolor` attributes that render as black-on-white blocks inside a dark Zendesk theme. The extension strips this presentational markup from comment containers (and watches for newly loaded comments via `MutationObserver`) without touching the reply composer.
+
+Toggle this behavior in the popup with **"Strip incoming email styling for dark mode"** (on by default). Changing this setting requires reloading the Zendesk tab to take effect.
 
 ## Markdown Template Placeholders
 

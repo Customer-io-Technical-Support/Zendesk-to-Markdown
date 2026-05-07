@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Zendesk Ticket to Markdown",
   "description": "Extract Zendesk ticket comments and copy or download a Markdown transcript.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "permissions": [
     "clipboardWrite",
     "downloads",
@@ -21,6 +21,14 @@
       "js": ["content.js"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "https://*.zendesk.com/agent/*",
+        "https://*.zendesk.com/*"
+      ],
+      "js": ["dark-mode-helper.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {
