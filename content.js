@@ -28,7 +28,7 @@
     if (!clipboard) return;
 
     const text = clipboard.getData("text/plain");
-    if (!text || !looksLikeMarkdown(text)) return;
+    if (!text || !shouldConvertOnPaste(text)) return;
 
     const html = markdownToHtml(text);
     if (!html) return;
@@ -37,17 +37,23 @@
     event.stopPropagation();
 
     if (dispatchSyntheticPaste(editable, html, text)) {
-      showToast("Pasted markdown as rich text.");
+      showToast("Pasted with formatting.");
       return;
     }
 
     if (insertHtmlAtSelection(html)) {
-      showToast("Pasted markdown as rich text.");
+      showToast("Pasted with formatting.");
       return;
     }
 
-    showToast("Couldn't insert markdown — pasting plain text instead.", true);
+    showToast("Couldn't insert formatted paste — using plain text.", true);
     insertPlainTextAtSelection(text);
+  }
+
+  function shouldConvertOnPaste(text) {
+    if (looksLikeMarkdown(text)) return true;
+    if (/\S\n[ \t]*\n\S/.test(text)) return true;
+    return false;
   }
 
   function findEditableAncestor(node) {
@@ -230,10 +236,10 @@
         i += 1;
       }
       const html = para.map((l) => renderInline(l)).join("<br>");
-      out.push(`<div>${html}</div>`);
+      out.push(`<p>${html}</p>`);
     }
 
-    return out.join("<div><br></div>");
+    return out.join("<p>&nbsp;</p>");
   }
 
   function renderInline(text) {
