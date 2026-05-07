@@ -14,6 +14,7 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 - Copies generated Markdown to clipboard
 - Downloads generated Markdown as a `.md` file
 - Supports a customizable Markdown template
+- Auto-converts pasted markdown (e.g. from Claude) to rich text in the Zendesk reply editor so headings, lists, paragraphs, and code blocks are preserved
 
 ## Scope and Restrictions
 
@@ -25,6 +26,7 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
 
 - `manifest.json` - Extension config (MV3), permissions, popup, icons
 - `background.js` - Extraction orchestration and Zendesk gating
+- `content.js` - Paste handler for the Zendesk reply editor: detects markdown on paste and inserts converted HTML so formatting survives
 - `popup.html` - Popup UI
 - `popup.css` - Popup styling
 - `popup.js` - Settings persistence and export trigger
@@ -51,6 +53,29 @@ Chrome extension to export a Zendesk ticket conversation into clean Markdown and
    - Markdown template
 4. Click **Copy Current Ticket** to copy to clipboard or **Download Markdown** to save a file.
 5. Paste/upload into your LLM.
+
+### Keyboard Shortcut
+
+You can copy the current ticket without opening the popup by binding a Chrome shortcut:
+
+1. Visit `chrome://extensions/shortcuts`.
+2. Find **Zendesk Ticket to Markdown** → **Copy current Zendesk ticket as Markdown**.
+3. Click the input and press your desired combo (e.g. `Ctrl+Shift+Y`).
+
+When triggered on a Zendesk ticket page, the extension copies the Markdown to your clipboard and shows an in-page toast confirming success.
+
+### Pasting Markdown Back Into Zendesk
+
+When you paste markdown (e.g. an LLM reply) into a Zendesk reply or internal note, the extension detects markdown syntax on the clipboard and inserts the converted HTML instead, so:
+
+- `# Heading`, `## Heading` become real headings
+- `**bold**`, `*italic*`, `` `code` `` are formatted
+- Bulleted (`- `, `* `, `+ `) and numbered (`1. `) lists become real lists
+- Fenced code blocks (```` ``` ````) become `<pre><code>` blocks
+- Blank lines become paragraph breaks (no more squashed line breaks)
+- Plain text without markdown syntax pastes as usual
+
+Toggle this behavior in the popup with **"Auto-convert markdown to rich text when pasting into Zendesk"** (on by default). A small toast appears at the bottom-right of the page when a paste is converted.
 
 ## Markdown Template Placeholders
 
@@ -98,4 +123,4 @@ If `{{conversation}}` is omitted, the conversation block is appended automatical
 
 - Manifest version: MV3
 - Background runtime: service worker (`background.js`)
-- No keyboard shortcut is configured.
+- Declares a `copy-current-ticket` command (no default key) — bind via `chrome://extensions/shortcuts`.

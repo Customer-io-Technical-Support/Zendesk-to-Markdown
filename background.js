@@ -18,6 +18,7 @@ const DEFAULT_OPTIONS = {
   includeAttachments: true,
   includeInlineImages: false,
   promptForDownloadLocation: true,
+  autoConvertMarkdownPaste: true,
   markdownTemplate: DEFAULT_MARKDOWN_TEMPLATE
 };
 const MESSAGE_TYPE_COPY = "runExtractionOnActiveTab";
@@ -29,6 +30,19 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 
   await runExtraction(tab.id, tab.url || "");
+});
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "copy-current-ticket") {
+    return;
+  }
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) {
+    return;
+  }
+
+  await runExtraction(tab.id, tab.url || "", "copy");
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -152,6 +166,10 @@ function normalizeOptions(rawOptions) {
     rawOptions?.promptForDownloadLocation !== undefined
       ? Boolean(rawOptions.promptForDownloadLocation)
       : DEFAULT_OPTIONS.promptForDownloadLocation;
+  const autoConvertMarkdownPaste =
+    rawOptions?.autoConvertMarkdownPaste !== undefined
+      ? Boolean(rawOptions.autoConvertMarkdownPaste)
+      : DEFAULT_OPTIONS.autoConvertMarkdownPaste;
   const markdownTemplate =
     typeof rawOptions?.markdownTemplate === "string" && rawOptions.markdownTemplate.trim()
       ? rawOptions.markdownTemplate
@@ -162,6 +180,7 @@ function normalizeOptions(rawOptions) {
     includeAttachments,
     includeInlineImages,
     promptForDownloadLocation,
+    autoConvertMarkdownPaste,
     markdownTemplate
   };
 }
