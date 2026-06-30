@@ -193,7 +193,16 @@
 
       if (/^\s*[-*+]\s+\S/.test(line)) {
         const items = [];
-        while (i < lines.length && /^\s*[-*+]\s+\S/.test(lines[i])) {
+        while (i < lines.length) {
+          if (!/^\s*[-*+]\s+\S/.test(lines[i])) {
+            let j = i;
+            while (j < lines.length && /^\s*$/.test(lines[j])) j += 1;
+            if (j > i && j < lines.length && /^\s*[-*+]\s+\S/.test(lines[j])) {
+              i = j;
+            } else {
+              break;
+            }
+          }
           let item = lines[i].replace(/^\s*[-*+]\s+/, "");
           i += 1;
           while (i < lines.length && /^\s{2,}\S/.test(lines[i])) {
@@ -208,7 +217,16 @@
 
       if (/^\s*\d+\.\s+\S/.test(line)) {
         const items = [];
-        while (i < lines.length && /^\s*\d+\.\s+\S/.test(lines[i])) {
+        while (i < lines.length) {
+          if (!/^\s*\d+\.\s+\S/.test(lines[i])) {
+            let j = i;
+            while (j < lines.length && /^\s*$/.test(lines[j])) j += 1;
+            if (j > i && j < lines.length && /^\s*\d+\.\s+\S/.test(lines[j])) {
+              i = j;
+            } else {
+              break;
+            }
+          }
           let item = lines[i].replace(/^\s*\d+\.\s+/, "");
           i += 1;
           while (i < lines.length && /^\s{2,}\S/.test(lines[i])) {
