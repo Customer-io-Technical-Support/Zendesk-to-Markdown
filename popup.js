@@ -20,6 +20,7 @@ const DEFAULT_OPTIONS = {
   promptForDownloadLocation: true,
   autoConvertMarkdownPaste: true,
   darkModeHelperEnabled: true,
+  transparentCodeBackground: false,
   markdownTemplate: DEFAULT_MARKDOWN_TEMPLATE
 };
 
@@ -29,6 +30,7 @@ const includeInlineImagesEl = document.getElementById("includeInlineImages");
 const promptForDownloadLocationEl = document.getElementById("promptForDownloadLocation");
 const autoConvertMarkdownPasteEl = document.getElementById("autoConvertMarkdownPaste");
 const darkModeHelperEnabledEl = document.getElementById("darkModeHelperEnabled");
+const transparentCodeBackgroundEl = document.getElementById("transparentCodeBackground");
 const markdownTemplateEl = document.getElementById("markdownTemplate");
 const saveOptionsEl = document.getElementById("saveOptions");
 const resetDefaultsEl = document.getElementById("resetDefaults");
@@ -163,6 +165,7 @@ function applyOptions(options) {
   promptForDownloadLocationEl.checked = options.promptForDownloadLocation;
   autoConvertMarkdownPasteEl.checked = options.autoConvertMarkdownPaste;
   darkModeHelperEnabledEl.checked = options.darkModeHelperEnabled;
+  transparentCodeBackgroundEl.checked = options.transparentCodeBackground;
   markdownTemplateEl.value = options.markdownTemplate;
 }
 
@@ -174,6 +177,7 @@ async function saveOptions() {
     promptForDownloadLocation: promptForDownloadLocationEl.checked,
     autoConvertMarkdownPaste: autoConvertMarkdownPasteEl.checked,
     darkModeHelperEnabled: darkModeHelperEnabledEl.checked,
+    transparentCodeBackground: transparentCodeBackgroundEl.checked,
     markdownTemplate: markdownTemplateEl.value
   });
 
@@ -206,6 +210,10 @@ function normalizeOptions(rawOptions) {
       rawOptions?.darkModeHelperEnabled !== undefined
         ? Boolean(rawOptions.darkModeHelperEnabled)
         : DEFAULT_OPTIONS.darkModeHelperEnabled,
+    transparentCodeBackground:
+      rawOptions?.transparentCodeBackground !== undefined
+        ? Boolean(rawOptions.transparentCodeBackground)
+        : DEFAULT_OPTIONS.transparentCodeBackground,
     markdownTemplate:
       typeof rawOptions?.markdownTemplate === "string" && rawOptions.markdownTemplate.trim()
         ? rawOptions.markdownTemplate
