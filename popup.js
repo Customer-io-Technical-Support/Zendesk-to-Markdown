@@ -41,6 +41,12 @@ const checkCloseEl = document.getElementById("checkClose");
 const statusMessageEl = document.getElementById("statusMessage");
 const ZENDESK_TICKET_URL_PATTERN = /^https?:\/\/[^/]*\.zendesk\.com\/agent\/tickets\/\d+/i;
 
+// The form starts empty, so nothing may be persisted (and no action may run,
+// since every action saves first) until init() has filled it from storage.
+let settingsLoaded = false;
+let tabSupported = false;
+
+setBusy(false);
 init().catch((error) => {
   showStatus(`Failed to load settings: ${String(error?.message || error)}`, true);
 });
@@ -146,14 +152,13 @@ checkCloseEl.addEventListener("click", async () => {
 async function init() {
   const saved = await chrome.storage.sync.get(DEFAULT_OPTIONS);
   applyOptions(normalizeOptions(saved));
+  settingsLoaded = true;
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const isSupportedTab = Boolean(tab?.url && ZENDESK_TICKET_URL_PATTERN.test(tab.url));
-  if (!isSupportedTab) {
-    copyNowEl.disabled = true;
-    downloadNowEl.disabled = true;
-    catchMeUpEl.disabled = true;
-    checkCloseEl.disabled = true;
+  tabSupported = Boolean(tab?.url && ZENDESK_TICKET_URL_PATTERN.test(tab.url));
+  setBusy(false);
+
+  if (!tabSupported) {
     showStatus("Open a Zendesk ticket page under *.zendesk.com to export.", true);
   }
 }
@@ -170,6 +175,10 @@ function applyOptions(options) {
 }
 
 async function saveOptions() {
+  if (!settingsLoaded) {
+    throw new Error("Settings are still loading.");
+  }
+
   const options = normalizeOptions({
     includePrivateNotes: includePrivateNotesEl.checked,
     includeAttachments: includeAttachmentsEl.checked,
@@ -222,12 +231,13 @@ function normalizeOptions(rawOptions) {
 }
 
 function setBusy(isBusy) {
-  copyNowEl.disabled = isBusy;
-  downloadNowEl.disabled = isBusy;
-  catchMeUpEl.disabled = isBusy;
-  checkCloseEl.disabled = isBusy;
-  saveOptionsEl.disabled = isBusy;
-  resetDefaultsEl.disabled = isBusy;
+  const blocked = isBusy || !settingsLoaded;
+  copyNowEl.disabled = blocked || !tabSupported;
+  downloadNowEl.disabled = blocked || !tabSupported;
+  catchMeUpEl.disabled = blocked || !tabSupported;
+  checkCloseEl.disabled = blocked || !tabSupported;
+  saveOptionsEl.disabled = blocked;
+  resetDefaultsEl.disabled = blocked;
 }
 
 function showStatus(message, isError = false) {

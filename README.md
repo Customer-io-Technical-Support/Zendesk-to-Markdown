@@ -71,13 +71,17 @@ When triggered on a Zendesk ticket page, the extension copies the Markdown to yo
 When you paste markdown (e.g. an LLM reply) into a Zendesk reply or internal note, the extension detects markdown syntax on the clipboard and inserts the converted HTML instead, so:
 
 - `# Heading`, `## Heading` become real headings
-- `**bold**`, `*italic*`, `` `code` `` are formatted
-- Bulleted (`- `, `* `, `+ `) and numbered (`1. `) lists become real lists
+- `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` `` are formatted
+- Bulleted (`- `, `* `, `+ `) and numbered (`1. `, `1) `) lists become real lists, including nesting by indentation, and numbered lists keep their starting number
 - Fenced code blocks (```` ``` ````) become `<pre><code>` blocks
+- Pipe tables become real tables, and `---` becomes a horizontal rule
+- Links and bare URLs become anchors; non-navigable schemes (`javascript:`, `data:`) are left as plain text
 - Blank lines become paragraph breaks (no more squashed line breaks)
 - Plain text without markdown syntax pastes as usual
 
 Toggle this behavior in the popup with **"Auto-convert markdown to rich text when pasting into Zendesk"** (on by default). A small toast appears at the bottom-right of the page when a paste is converted.
+
+Paragraph breaks are emitted as `<br><br>` inside a block rather than as separate `<p>` elements with empty spacer blocks between them. Zendesk's composer drops empty block elements and renders `<p>` with no margin, so spacer-based approaches lose the blank lines entirely; `<br>` is preserved by the composer and by every email client that renders the outgoing reply.
 
 ### Dark Mode Helper
 

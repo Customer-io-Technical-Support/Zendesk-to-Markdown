@@ -730,6 +730,12 @@ function extractTicket(rawOptions, rawRunOptions) {
   }
 
   function resolveNextPage(payload) {
+    // Cursor-based pagination keeps returning links.next past the last page;
+    // meta.has_more is the authoritative stop signal.
+    if (payload?.meta && payload.meta.has_more === false) {
+      return null;
+    }
+
     const next = payload?.links?.next || payload?.next_page || null;
     if (!next) {
       return null;
