@@ -2,6 +2,14 @@
   const STORAGE_KEY = "autoConvertMarkdownPaste";
   const BLOCK_MARK = "";
   const INLINE_MARK = "";
+  // Zendesk's composer styles .ck-content p with margin:0, so adjacent <p>
+  // elements render with no blank line between them. Zendesk's own
+  // markdown-on-paste handler works around this by emitting an explicit
+  // <p>&nbsp;</p> between every pair of top-level blocks, and its paste
+  // pipeline passes those spacers through untouched. Matching that format is
+  // what keeps blank lines visible in the composer and in the outgoing email.
+  // Verified against CKEditor 45.2.1 in the Zendesk agent workspace.
+  const BLOCK_SPACER = "<p>&nbsp;</p>";
   let enabled = true;
 
   if (chrome?.storage?.sync) {
@@ -41,13 +49,30 @@
       return;
     }
 
+    const contentBefore = editable.innerHTML;
     if (insertHtmlAtSelection(html)) {
-      showToast("Pasted with formatting.");
+      confirmInsertion(editable, contentBefore, text);
       return;
     }
 
     showToast("Couldn't insert formatted paste — using plain text.", true);
     insertPlainTextAtSelection(text);
+  }
+
+  // Model-backed editors (CKEditor in the Zendesk composer) re-render from
+  // their model on the next microtask and discard any DOM inserted behind their
+  // back, yet execCommand still reports success. Confirm the content actually
+  // stuck before claiming the paste worked, so a silently dropped paste falls
+  // back to plain text instead of looking like it succeeded.
+  function confirmInsertion(editable, contentBefore, text) {
+    requestAnimationFrame(() => {
+      if (editable.innerHTML !== contentBefore) {
+        showToast("Pasted with formatting.");
+        return;
+      }
+      showToast("Couldn't insert formatted paste — using plain text.", true);
+      insertPlainTextAtSelection(text);
+    });
   }
 
   function shouldConvertOnPaste(text) {
@@ -155,19 +180,12 @@
     });
 
     const lines = src.split("\n");
-    const chunks = [];
+    const blocks = [];
     let i = 0;
     const blockLineRe = new RegExp("^" + BLOCK_MARK + "B(\\d+)" + BLOCK_MARK + "$");
 
-    const pushBlock = (html) => chunks.push({ type: "block", html });
-    const pushParagraph = (html) => {
-      const last = chunks[chunks.length - 1];
-      if (last && last.type === "prose") {
-        last.paragraphs.push(html);
-      } else {
-        chunks.push({ type: "prose", paragraphs: [html] });
-      }
-    };
+    const pushBlock = (html) => blocks.push(html);
+    const pushParagraph = (html) => blocks.push(`<p>${html}</p>`);
 
     while (i < lines.length) {
       const line = lines[i];
@@ -243,30 +261,10 @@
       pushParagraph(para.map((l) => renderInline(l)).join("<br>"));
     }
 
-    return renderChunks(chunks);
-  }
-
-  // Zendesk's composer drops empty block elements (<p>&nbsp;</p>, <p><br></p>)
-  // and renders <p> with no margin, so neither spacer blocks nor paragraph
-  // margins can be relied on for blank lines. <br> is the one separator every
-  // editor and email client preserves, so paragraph breaks are carried as
-  // <br><br> *inside* a block, and prose runs get a leading/trailing <br> where
-  // they touch a real block element.
-  function renderChunks(chunks) {
-    const parts = [];
-
-    chunks.forEach((chunk, index) => {
-      if (chunk.type !== "prose") {
-        parts.push(chunk.html);
-        return;
-      }
-
-      const lead = index > 0 ? "<br>" : "";
-      const tail = index < chunks.length - 1 ? "<br>" : "";
-      parts.push(`<p>${lead}${chunk.paragraphs.join("<br><br>")}${tail}</p>`);
-    });
-
-    return parts.join("");
+    // Markdown separates top-level blocks with blank lines, so restore one
+    // spacer paragraph between each pair. Soft line breaks *within* a
+    // paragraph stay as <br>, which the composer preserves as-is.
+    return blocks.join(BLOCK_SPACER);
   }
 
   function indentWidth(whitespace) {

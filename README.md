@@ -81,7 +81,18 @@ When you paste markdown (e.g. an LLM reply) into a Zendesk reply or internal not
 
 Toggle this behavior in the popup with **"Auto-convert markdown to rich text when pasting into Zendesk"** (on by default). A small toast appears at the bottom-right of the page when a paste is converted.
 
-Paragraph breaks are emitted as `<br><br>` inside a block rather than as separate `<p>` elements with empty spacer blocks between them. Zendesk's composer drops empty block elements and renders `<p>` with no margin, so spacer-based approaches lose the blank lines entirely; `<br>` is preserved by the composer and by every email client that renders the outgoing reply.
+#### Paragraph spacing
+
+Each top-level markdown block is emitted as its own element, with an explicit `<p>&nbsp;</p>` spacer paragraph between every adjacent pair. Soft line breaks *within* a paragraph stay as `<br>`.
+
+This matches what Zendesk's own markdown-on-paste handler produces, byte for byte. The reason the spacer is required: Zendesk styles `.ck-content p` with `margin: 0`, so two adjacent `<p>` elements render with no blank line between them. The spacer paragraph is what makes the blank line visible.
+
+Verified against CKEditor 45.2.1 in the Zendesk agent workspace:
+
+- `<p>&nbsp;</p>` spacers round-trip through the paste pipeline unchanged, and Zendesk emits them itself — they are *not* dropped as empty blocks
+- Inline `style` attributes are stripped (the build has no `GeneralHtmlSupport`), so `margin` styles cannot carry the spacing
+- `<div><br></div>` spacers *are* dropped
+- With spacers, the rendered gap between paragraphs measures 18px; without them it is 0px
 
 ### Dark Mode Helper
 
